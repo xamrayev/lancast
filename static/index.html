@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LANCast Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #screenshot {
+            width: 80%;
+            max-width: 800px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin-top: 20px;
+            cursor: pointer; /* Добавляем курсор для наведения */
+        }
+        #controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>LANCast Client</h1>
+        <img id="screenshot" onclick="toggleFullscreen()" title="Click to fullscreen">
+        
+        <div id="controls">
+            <button id="startBtn">Start</button>
+            <button id="stopBtn">Stop</button>
+            <button id="saveBtn">Save Image</button>
+        </div>
+    </div>
+    
+    <script type="text/javascript">
+        var ws;
+        var img = document.getElementById('screenshot');
+        var startBtn = document.getElementById('startBtn');
+        var stopBtn = document.getElementById('stopBtn');
+        var saveBtn = document.getElementById('saveBtn');
+        var isInFullscreen = false;
+
+        startBtn.addEventListener('click', function() {
+            if (ws === undefined || ws.readyState !== WebSocket.OPEN) {
+                ws = new WebSocket("ws://" + window.location.host + "/ws");
+                ws.binaryType = 'arraybuffer';
+
+                ws.onmessage = function(event) {
+                    var arrayBuffer = event.data;
+                    var blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+                    var urlCreator = window.URL || window.webkitURL;
+                    var imageUrl = urlCreator.createObjectURL(blob);
+                    img.src = imageUrl;
+                };
+
+                ws.onclose = function(event) {
+                    console.log("WebSocket is closed now.");
+                };
+            }
+        });
+
+        stopBtn.addEventListener('click', function() {
+            if (ws !== undefined && ws.readyState === WebSocket.OPEN) {
+                ws.close();
+            }
+        });
+
+        saveBtn.addEventListener('click', function() {
+            if (img.src) {
+                var link = document.createElement('a');
+                link.href = img.src;
+                link.download = 'screenshot.jpg';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                console.log("No image to save.");
+            }
+        });
+
+        function toggleFullscreen() {
+            if (!isInFullscreen) {
+                if (img.requestFullscreen) {
+                    img.requestFullscreen();
+                } else if (img.webkitRequestFullscreen) { /* Safari */
+                    img.webkitRequestFullscreen();
+                } else if (img.msRequestFullscreen) { /* IE11 */
+                    img.msRequestFullscreen();
+                }
+                isInFullscreen = true;
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { /* Safari */
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) { /* IE11 */
+                    document.msExitFullscreen();
+                }
+                isInFullscreen = false;
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                if (isInFullscreen) {
+                    toggleFullscreen(); // Выход из полноэкранного режима при нажатии Esc
+                }
+            }
+        });
+    </script>
+</body>
+</html>
